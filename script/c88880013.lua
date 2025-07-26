@@ -39,6 +39,7 @@ function s.xyzop(e,tp,eg,ep,ev,re,r,rp,c,og)
 		c:SetMaterial(og)
 		Duel.Overlay(c,g1)
 	end
+	aux.Stringid(id,1)
 end
 function s.adval(e,c)
 	return Duel.GetFieldGroupCount(0,LOCATION_PZONE,LOCATION_PZONE)*500 
