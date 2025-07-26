@@ -16,19 +16,16 @@ function s.initial_effect(c)
 	e1:SetTarget(s.atktg)
 	e1:SetValue(s.atkval)
 	c:RegisterEffect(e1)
-	--Once per turn, if you do not have any cards in your pendulum zones, or if you control at least 1 "CREATION" Pendulum monster in your Pendulum Zone: you can target 1 "Ringshoku - Evolutions Engineer" in your Deck or GY, then activate 1 of the following effects based on its current location:
-	--● Deck: add the targeted monster to hand.
-	--● GY: Special Summon the targeted monster.
+	--Once per turn, if you do not have any cards in your pendulum zones, or if you control at least 1 "CREATION" Pendulum monster in your Pendulum Zone: you can target 1 "Ringshoku - Evolutions Engineer" in your deck or gy, either add that card to your hand, or, if you control a "CREATION" Pendulum monster in the pendulum zone, Special Summon it to your field.
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,0))
-	e2:SetCategory(CATEGORY_TOHAND)
+	e2:SetCategory(CATEGORY_TOHAND+CATEGORY_SPECIAL_SUMMON)
 	e2:SetType(EFFECT_TYPE_IGNITION)
 	e2:SetRange(LOCATION_FZONE)
-	e2:SetProperty(EFFECT_TYPE_ACTIVATE)
 	e2:SetCountLimit(1)
-	--e2:SetCondition(s.spcon)
-	e2:SetTarget(s.sptg)
-	--e2:SetOperation(s.spop)
+	e2:SetCondition(s.spcon)
+	e2:SetTarget(s.thtg)
+	e2:SetOperation(s.thop)
 	c:RegisterEffect(e2)
 end
 function s.xyzfilter2(c)
@@ -52,15 +49,50 @@ function s.atkval(e,c)
 		return 0
 	end
 end
---Once per turn, if you do not have any cards in your pendulum zones, or if you control at least 1 "CREATION" Pendulum monster in your Pendulum Zone: you can target 1 "Ringshoku - Evolutions Engineer" in your Deck or GY, then activate 1 of the following effects based on its current location:
---● Deck: add the targeted monster to hand.
---● GY: Special Summon the targeted monster.
+--Once per turn, if you do not have any cards in your pendulum zones, or if you control at least 1 "CREATION" Pendulum monster in your Pendulum Zone: you can target 1 "Ringshoku - Evolutions Engineer" in your deck or gy, either add that card to your hand, or, if you control a "CREATION" Pendulum monster in the pendulum zone, Special Summon it to your field.
+function s.spcon(e,tp,eg,ep,ev,re,r,rp)
+	 if Duel.GetFieldGroupCount(tp,LOCATION_PZONE,0)==0 or Duel.IsExistingMatchingCard(Card.IsSetCard,tp,LOCATION_PZONE,0,1,e:GetHandler(),0x8df) then return true end
+end
+function s.spfilter(c,e,tp,pend_chk)
+	return c:IsCode(88880001) and (c:IsAbleToHand() or (pend_chk and c:IsCanBeSpecialSummoned(e,0,tp,false,false)))
+end
+function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)
+	local pend_chk=Duel.GetLocationCount(tp,LOCATION_MZONE)>0
+		and Duel.IsExistingMatchingCard(aux.FaceupFilter(Card.IsSetCard,0x8df),tp,LOCATION_PZONE,0,1,nil)
+	if chk==0 then return Duel.IsExistingMatchingCard(s.spfilter,tp,LOCATION_GRAVE|LOCATION_DECK,0,1,nil) end
+	Duel.SetPossibleOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK|LOCATION_GRAVE)
+	Duel.SetPossibleOperationInfo(0,CATEGORY_SPECIAL_SUMMON,nil,1,tp,LOCATION_DECK|LOCATION_GRAVE)
+	--if chk==0 then return Duel.IsExistingMatchingCard(s.spfilter,tp,LOCATION_GRAVE|LOCATION_DECK,0,1,nil) end
+   -- Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_GRAVE|LOCATION_DECK)
+end
+function s.thop(e,tp,eg,ep,ev,re,r,rp)
+	--local c=e:GetHandler()
+	--local tc=Duel.GetFirstTarget()
+	--Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
+	--local g=Duel.SelectMatchingCard(tp,aux.NecroValleyFilter(s.spfilter),tp,LOCATION_GRAVE|LOCATION_DECK,0,1,1,nil):GetFirst()
+	--if not g:GetFirst() and not g:GetFirst():IsRelateToEffect(e) then return end
+	--if g:GetFirst():IsAbleToHand() and (Duel.GetLocationCount(tp,LOCATION_MZONE)<=0 or not g:GetFirst():IsCanBeSpecialSummoned(e,0,tp,false,false) or Duel.SelectOption(tp,573,1152)==0) then
+		--Duel.SendtoHand(tc,nil,REASON_EFFECT)
+		--Duel.ConfirmCards(1-tp,g)
+	--else
+		--if Duel.SpecialSummonStep(g:GetFirst(),0,tp,tp,false,false,POS_FACEUP) then
 
-function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
-	if chkc then return chkc:IsLocation(LOCATION_GRAVE) and s.filter(chkc,e,tp) end
-	if chk==0 then return Duel.GetLocationCount(tp,LOCATION_MZONE)>0
-		and Duel.IsExistingTarget(s.filter,tp,LOCATION_GRAVE,0,1,nil,e,tp) or Duel.IsExistingTarget(s.filter,tp,LOCATION_DECK,0,1,nill,e,tp) end
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
-	local g=Duel.SelectTarget(tp,s.filter,tp,LOCATION_GRAVE,LOCATION_GRAVE,1,1,nil,e,tp)
-	Duel.SetOperationInfo(0,CATEGORY_SPECIAL_SUMMON,g,1,0,0)
+		--end
+		--Duel.SpecialSummonComplete()
+	--end
+
+	local pend_chk=Duel.GetLocationCount(tp,LOCATION_MZONE)>0
+		and Duel.IsExistingMatchingCard(aux.FaceupFilter(Card.IsSetCard,0x8df),tp,LOCATION_PZONE,0,1,nil)
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SELECT)
+	local sc=Duel.SelectMatchingCard(tp,s.spfilter,tp,LOCATION_DECK|LOCATION_GRAVE,0,1,1,nil,e,tp,pend_chk):GetFirst()
+	if not sc then return end
+	aux.ToHandOrElse(sc,tp,
+		function(sc)
+			return pend_chk and sc:IsCanBeSpecialSummoned(e,0,tp,false,false)
+		end,
+		function(sc)
+			return Duel.SpecialSummon(sc,0,tp,tp,false,false,POS_FACEUP)
+		end,
+		aux.Stringid(id,1)
+	)
 end
