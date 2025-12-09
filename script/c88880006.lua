@@ -1,17 +1,18 @@
---CREATION - Celestial Wand
+--CREATION - Celestial Weaver
 local s,id,o=GetID()
 function s.initial_effect(c)
 	Pendulum.AddProcedure(c)
-	--Each time a "CREATION" card(s) is banished: Shuffle 1 banished "CREATION" card into the Deck, then, until the end of this turn, increase or decrease the Scales of all Pendulum Monsters on the field by 1.
+	--Once per turn, if a "CREATION" card is banished: you can either Special Summon 1 "CREATION" monster from your hand or deck, or, if you control a "CREATION" Xyz Monster, you can attach 1 banished "CREATION" monster to that Xyz Monster as material.
 	local e1=Effect.CreateEffect(c)
-	e1:SetDescription(aux.Stringid(id,1))
-	e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
+	e1:SetDescription(aux.Stringid(id,0))
+	e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O)
 	e1:SetCode(EVENT_REMOVE)
 	e1:SetRange(LOCATION_PZONE)
-	e1:SetCountLimit(1,id+EFFECT_COUNT_CODE_CHAIN)
-	e1:SetCondition(s.shufcon)
-	e1:SetTarget(s.shuftg)
-	e1:SetOperation(s.shufop)
+	e1:SetCountLimit(1)
+	e1:SetProperty(EFFECT_FLAG_DELAY)
+	e1:SetCondition(s.bcon)
+	e1:SetTarget(s.btg)
+	e1:SetOperation(s.bop)
 	c:RegisterEffect(e1)
 	--Once per turn: You can target 1 other card in a Pendulum Zone; this card's Pendulum Scale becomes equal to that target's Pendulum Scale, until the end of this turn.
 	local e2=Effect.CreateEffect(c)
@@ -23,7 +24,7 @@ function s.initial_effect(c)
 	e2:SetTarget(s.pentg)
 	e2:SetOperation(s.penop)
 	c:RegisterEffect(e2)
-	--You can target 1 "CREATION" Pendulum Monster in your Pendulum Zone; add it to your hand, and if you do, you can either place this card in your Pendulum Zone, or, if you control a "CREATION" Xyz Monster, attach this card to 1 "CREATION" Xyz Monster you control as Xyz Material. 
+	--You can target 1 "CREATION" Pendulum Monster in your Pendulum Zone; add it to your hand, and if you do, you can either place this card in your Pendulum Zone, or, if you control a "CREATION" Xyz Monster, attach this card to 1 "CREATION" Xyz Monster you control as Xyz Material.
 	local e4=Effect.CreateEffect(c)
 	e4:SetType(EFFECT_TYPE_IGNITION)
 	e4:SetRange(LOCATION_MZONE)
@@ -31,58 +32,66 @@ function s.initial_effect(c)
 	e4:SetTarget(s.pptg)
 	e4:SetOperation(s.ppop)
 	c:RegisterEffect(e4)
-	--While this card is attached to an Xyz Monster as material, it gains the following effect:
-	--● This card gains 200 ATK for each card in your banishment.
+	--While this card is attached to a "CREATION" Xyz Monster as material, it gains the following effect:
+	--● Any card sent to the opponents gy is banished instead.
 	local e5=Effect.CreateEffect(c)
-	e5:SetDescription(aux.Stringid(id,2))
-	e5:SetType(EFFECT_TYPE_XMATERIAL)
-	e5:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
-	e5:SetCode(EFFECT_UPDATE_ATTACK)
-	e5:SetCondition(s.xyzcon)
+	e5:SetType(EFFECT_TYPE_XMATERIAL+EFFECT_TYPE_FIELD)
+	e5:SetProperty(EFFECT_FLAG_SET_AVAILABLE+EFFECT_FLAG_IGNORE_RANGE+EFFECT_FLAG_IGNORE_IMMUNE)
+	e5:SetCode(EFFECT_TO_GRAVE_REDIRECT)
 	e5:SetRange(LOCATION_MZONE)
-	e5:SetValue(s.value)
+	e5:SetTargetRange(0,0xff)
+	e5:SetValue(LOCATION_REMOVED)
+	e5:SetTarget(s.xyztg)
 	c:RegisterEffect(e5)
 end
---Each time a "CREATION" card(s) is banished: Shuffle 1 banished "CREATION" card into the Deck, then, until the end of this turn, increase or decrease the Scales of all Pendulum Monsters on the field by 1.
-function s.shuffilter(c)
-	return c:IsAbleToDeck() and c:IsFaceup() and c:IsSetCard(0x8df)
+--Once per turn, if a "CREATION" card is banished: you can either Special Summon 1 "CREATION" monster from your hand or deck, or, if you control a "CREATION" Xyz Monster, you can attach 1 banished "CREATION" monster to that Xyz Monster as material.
+function s.pfilter(c,e)
+	return c:IsFaceup() and c:IsLocation(LOCATION_REMOVED)
 end
-function s.shuffilter(c)
-	return c:IsFaceup() and c:IsFaceup() and bit.band(c:GetOriginalType(),TYPE_PENDULUM)==TYPE_PENDULUM
+function s.bfilter(c,e)
+	return c:IsSetCard(0x8df) and c:IsLocation(LOCATION_REMOVED)
 end
-function s.atkfilter(c)
-	return c:IsFaceup() and c:IsSetCard(0x8df)
+function s.xcfilter(c)
+	return c:IsFaceup() and c:IsSetCard(0x8df) and c:IsType(TYPE_XYZ)
 end
-function s.shufcon(e,tp,eg,ep,ev,re,r,rp)
-	return eg:IsExists(s.shuffilter,1,nil)
+function s.thfilter(c)
+	return c:IsSetCard(0x8df) and c:IsType(TYPE_MONSTER)
 end
-function s.shuftg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsExistingMatchingCard(s.shuffilter,tp,LOCATION_REMOVED,0,1,nil) end
-	Duel.SetOperationInfo(0,CATEGORY_TODECK,nil,1,0,LOCATION_REMOVED)
+
+function s.banfilter(c)
+	return c:IsFaceup() and not c:IsPreviousLocation(LOCATION_REMOVED)
 end
-function s.shufop(e,tp,eg,ep,ev,re,r,rp)
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TODECK)
-	local tc=Duel.SelectMatchingCard(tp,s.shuffilter,tp,LOCATION_REMOVED,LOCATION_REMOVED,1,1,nil)--:GetFirst()
-	local g=Duel.GetMatchingGroup(s.atkfilter,tp,LOCATION_MZONE,0,nil)
-	if Duel.SendtoDeck(tc,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 then
-		if #g==0 then return end
-		Duel.BreakEffect()
-		local c=e:GetHandler()
-		for tc in g:Iter() do
-			local e1=Effect.CreateEffect(c)
-			e1:SetType(EFFECT_TYPE_SINGLE)
-			e1:SetCode(EFFECT_UPDATE_ATTACK)
-			e1:SetTarget(s.shufatktg)
-			e1:SetValue(200)
-			e1:SetReset(RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END)
-			tc:RegisterEffect(e1)
+function s.bcon(e,tp,eg,ep,ev,re,r,rp)
+	return eg:IsExists(s.banfilter,1,nil)
+end
+function s.btg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
+	if chkc then return eg:IsContains(chkc) end
+	if chk==0 then return eg:IsExists(s.pfilter,1,nil,e)
+		and Duel.IsPlayerCanDraw(tp,1) end
+	Duel.SetTargetPlayer(tp)
+	Duel.SetTargetParam(1)
+	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
+end
+function s.bop(e,tp,eg,ep,ev,re,r,rp)
+	local c=e:GetHandler()
+	local xyz_chk=Duel.IsExistingMatchingCard(s.xcfilter,tp,LOCATION_MZONE,0,1,nil)
+	if xyz_chk then
+		local sel=Duel.SelectOption(tp,aux.Stringid(id,2),aux.Stringid(id,3))
+		if sel==0 then
+			local g=Duel.SelectMatchingCard(tp,s.bfilter,tp,LOCATION_REMOVED,0,1,1,nil)
+			local txc=Duel.SelectMatchingCard(tp,s.xcfilter,tp,LOCATION_MZONE,0,1,1,nil):GetFirst()
+			Duel.Overlay(txc,g)
+		else
+			local g=Duel.SelectMatchingCard(tp,s.thfilter,tp,LOCATION_HAND|LOCATION_DECK,0,1,1,nil)
+			Duel.SpecialSummon(g,0,tp,tp,false,false,POS_FACEUP)
 		end
+	else
+		local g=Duel.SelectMatchingCard(tp,s.thfilter,tp,LOCATION_HAND|LOCATION_DECK,0,1,1,nil)
+		Duel.SpecialSummon(g,0,tp,tp,false,false,POS_FACEUP)
 	end
 end
-function s.shufatktg(e,c)
-	return c:IsSetCard(0x8df) and c:IsType(TYPE_XYZ)
-end
---Once per turn: You can target 1 other card in a Pendulum Zone; this card's Pendulum Scale becomes equal to that target's Pendulum Scale, until the end of this turn.
+
+
 function s.penfilter(c)
 	return c:IsFaceup() and c:IsType(TYPE_PENDULUM)
 end
@@ -137,10 +146,7 @@ function s.ppop(e,tp,eg,ep,ev,re,r,rp)
 	end
 end
 --While this card is attached to a "CREATION" Xyz Monster as material, it gains the following effect:
---● This card gains 200 ATK for each card in your banishment.
-function s.xyzcon(e,tp,eg,ep,ev,re,r,rp)
-	return e:GetHandler():IsSetCard(0x8df) and e:GetHandler():IsType(TYPE_XYZ)
-end
-function s.value(e,c)
-	return Duel.GetFieldGroupCount(c:GetControler(),LOCATION_REMOVED,LOCATION_REMOVED)*200
+	--● Any card sent to the opponents gy is banished instead.
+function s.xyztg(e,c)
+	return c:GetOwner()~=e:GetHandlerPlayer() and Duel.IsPlayerCanRemove(e:GetHandlerPlayer(),c)
 end

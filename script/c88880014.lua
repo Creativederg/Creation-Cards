@@ -1,9 +1,9 @@
 --CREATION-Eyes Celestial Dragon
 local s,id,o=GetID()
 function s.initial_effect(c)
-	Xyz.AddProcedure(c,nil,4,2)--,s.ovfilter,aux.Stringid(s,0),2,s.xyzop)
+	Xyz.AddProcedure(c,nil,6,2)--,s.ovfilter,aux.Stringid(s,0),2,s.xyzop)
 	c:EnableReviveLimit()
-	--You can also Xyz Summon this card by using 2 scale 4 monsters from your pendulum zone as material. 
+	--You can also Xyz Summon this card by using 2 scale 8 monsters from your pendulum zone as material. 
 	local e0=Effect.CreateEffect(c)
 	e0:SetProperty(EFFECT_FLAG_UNCOPYABLE)
 	e0:SetType(EFFECT_TYPE_FIELD)
@@ -13,18 +13,9 @@ function s.initial_effect(c)
 	e0:SetOperation(s.xyzop)
 	e0:SetValue(SUMMON_TYPE_XYZ)
 	c:RegisterEffect(e0)
-	--This card gains 500 ATK/DEF for each Pendulum monster in the Pendulum Zones.
-	local e1=Effect.CreateEffect(c)
-	e1:SetType(EFFECT_TYPE_SINGLE)
-	e1:SetCode(EFFECT_UPDATE_ATTACK)
-	e1:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
-	e1:SetRange(LOCATION_MZONE)
-	e1:SetValue(s.adval)
-	c:RegisterEffect(e1)
-	--You can detach 1 material from this card; destroy all cards in your Pendulum Zone, and if you do, this card gains 500 ATK for each card destroyed by this effect, also, all monsters you control gain 100 ATK for the combined Scales of all monsters destroyed by this effect, until the end of this turn. You can only activate this effect of "CREATION-Eyes World Dragon" once per turn.
 end
 function s.ovfilter(c,tp)
-	return c:IsType(TYPE_PENDULUM) and c:IsLocation(LOCATION_PZONE,0) and c:IsSetCard(0x8df) and (c:GetLeftScale()==4 or c:GetRightScale()==4)
+	return c:IsType(TYPE_PENDULUM) and c:IsLocation(LOCATION_PZONE,0) and c:IsSetCard(0x8df) and (c:GetLeftScale()==6 or c:GetRightScale()==6)
 end
 function s.xyzcon(e,c,og)
 	local tp=e:GetHandlerPlayer()
@@ -34,7 +25,7 @@ function s.xyzcon(e,c,og)
 	local scl1=tc1:GetLeftScale()
 	local scl2=tc2:GetRightScale()
 	if scl1>scl2 then scl1,scl2=scl2,scl1 end
-	return scl1==4 and scl2==4
+	return scl1==6 and scl2==6
 end
 function s.xyzop(e,tp,eg,ep,ev,re,r,rp,c,og)
    if chk==0 then return Duel.IsExistingMatchingCard(s.ovfilter,tp,LOCATION_PZONE,0,2,nil) 
@@ -46,7 +37,4 @@ function s.xyzop(e,tp,eg,ep,ev,re,r,rp,c,og)
 		Duel.Overlay(c,g1)
 	end
 	aux.Stringid(id,1)
-end
-function s.adval(e,c)
-	return Duel.GetFieldGroupCount(0,LOCATION_PZONE,LOCATION_PZONE)*500 
 end
