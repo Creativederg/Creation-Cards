@@ -4,7 +4,7 @@ function s.initial_effect(c)
 	Pendulum.AddProcedure(c)
 	--Each time a "CREATION" card(s) is banished: Shuffle 1 banished "CREATION" card into the Deck, then, until the end of this turn, increase or decrease the Scales of all Pendulum Monsters on the field by 1.
 	local e1=Effect.CreateEffect(c)
-	e1:SetDescription(aux.Stringid(id,1))
+	e1:SetDescription(aux.Stringid(id,0))
 	e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
 	e1:SetCode(EVENT_REMOVE)
 	e1:SetRange(LOCATION_PZONE)
@@ -26,6 +26,7 @@ function s.initial_effect(c)
 	--You can target 1 "CREATION" Pendulum Monster in your Pendulum Zone; add it to your hand, and if you do, you can either place this card in your Pendulum Zone, or, if you control a "CREATION" Xyz Monster, attach this card to 1 "CREATION" Xyz Monster you control as Xyz Material. 
 	local e4=Effect.CreateEffect(c)
 	e4:SetType(EFFECT_TYPE_IGNITION)
+	e4:SetDescription(aux.Stringid(id,2))
 	e4:SetRange(LOCATION_MZONE)
 	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e4:SetTarget(s.pptg)
@@ -34,7 +35,6 @@ function s.initial_effect(c)
 	--While this card is attached to an Xyz Monster as material, it gains the following effect:
 	--● This card gains 200 ATK for each card in your banishment.
 	local e5=Effect.CreateEffect(c)
-	e5:SetDescription(aux.Stringid(id,2))
 	e5:SetType(EFFECT_TYPE_XMATERIAL)
 	e5:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
 	e5:SetCode(EFFECT_UPDATE_ATTACK)
@@ -90,7 +90,7 @@ function s.pentg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	local c=e:GetHandler()
 	if chkc then return chkc:IsControler(tp) and chkc:IsLocation(LOCATION_PZONE) and s.atkfilter(chkc) and chkc~=c end
 	if chk==0 then return Duel.IsExistingTarget(s.penfilter,tp,LOCATION_PZONE,0,1,c) end
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATKDEF)
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TARGET)
 	Duel.SelectTarget(tp,s.penfilter,tp,LOCATION_PZONE,0,1,1,c)
 end
 function s.penop(e,tp,eg,ep,ev,re,r,rp)

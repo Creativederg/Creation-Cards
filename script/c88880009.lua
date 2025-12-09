@@ -36,11 +36,13 @@ function s.initial_effect(c)
 	local e4=Effect.CreateEffect(c)
 	e4:SetDescription(aux.Stringid(id,3))
 	e4:SetType(EFFECT_TYPE_XMATERIAL+EFFECT_TYPE_TRIGGER_O)
+	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e4:SetCode(EVENT_BATTLE_DESTROYING)
 	e4:SetRange(LOCATION_MZONE)
-	e4:SetCondition(s.atkcon)
-	e4:SetCost(s.atkcos)
-	e4:SetOperation(s.atkop)
+	e4:SetCondition(s.xyzcon)
+	--e4:SetCost(s.xyzcos)
+	e4:SetTarget(s.xyztg)
+	e4:SetOperation(s.xyzop)
 	c:RegisterEffect(e4)
 end
 --Once per turn: you can Banish 1 "CREATION" monster, (or 1 monster if you control an Xyz Monster with a "CREATION" card as material), from your hand or GY; until the end of your opponents turn, when a "CREATION" Pendulum monster(s) in your pendulum zone is destroyed by a card effect, you can place "CREATION" Pendulum Monsters from your Face Up extra deck, GY or Bannishment into your pendulum zone, up to the number of monsters destroyed.
@@ -162,27 +164,29 @@ function s.ppop(e,tp,eg,ep,ev,re,r,rp)
 end
 --An Xyz Monster that has this card as material gains the following effect:
 --● Once per turn, when this card destroys an opponent's monster by battle: you can banish 1 card on the field; It can make a second attack during this Battle Phase.
-function s.atkcon(e,tp,eg,ep,ev,re,r,rp)
-	return Duel.GetAttacker()==e:GetHandler() and aux.bdocon(e,tp,eg,ep,ev,re,r,rp)
+function s.xyzcon(e,tp,eg,ep,ev,re,r,rp)
+	return e:GetHandler():IsType(TYPE_XYZ) and Duel.GetAttacker()==e:GetHandler() and aux.bdcon(e,tp,eg,ep,ev,re,r,rp)
 end
-function s.atkcos(e,tp,eg,ep,ev,re,r,rp,chk)
+function s.xyztg(e,tp,eg,ep,ev,re,r,rp,chk)
+	if chk==0 then return e:GetHandler():IsRelateToBattle() and not e:GetHandler():IsHasEffect(EFFECT_EXTRA_ATTACK) end
+end
+function s.xyzop(e,tp,eg,ep,ev,re,r,rp,chk)
+	local c=e:GetHandler()
+	if not c:IsRelateToBattle() then return end
 	if chk==0 then return e:GetHandler():GetAttackAnnouncedCount()==0
 		and Duel.IsExistingMatchingCard(nil,tp,LOCATION_ONFIELD,LOCATION_ONFIELD,1,e:GetHandler())end
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
 	local g=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_ONFIELD,LOCATION_ONFIELD,1,1,e:GetHandler())
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
-	Duel.Remove(g,POS_FACEUP,REASON_COST)
-end
-function s.atkop(e,tp,eg,ep,ev,re,r,rp)
-	local c=e:GetHandler()
-	if not (c:IsRelateToBattle() and c:IsRelateToEffect(e) and c:IsFaceup()) then return end
 	--Can make a second attack
-	local e1=Effect.CreateEffect(c)
-	e1:SetDescription(3201)
-	e1:SetType(EFFECT_TYPE_SINGLE)
-	e1:SetProperty(EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT)
-	e1:SetCode(EFFECT_EXTRA_ATTACK)
-	e1:SetValue(1)
-	e1:SetReset(RESET_EVENT|RESETS_STANDARD|RESET_PHASE|PHASE_BATTLE)
-	c:RegisterEffect(e1)
+	if Duel.Remove(g,POS_FACEUP,REASON_COST) then
+		local e1=Effect.CreateEffect(c)
+		e1:SetDescription(3201)
+		e1:SetType(EFFECT_TYPE_SINGLE)
+		e1:SetProperty(EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT)
+		e1:SetCode(EFFECT_EXTRA_ATTACK)
+		e1:SetValue(1)
+		e1:SetReset(RESET_EVENT|RESETS_STANDARD|RESET_PHASE|PHASE_BATTLE)
+		c:RegisterEffect(e1)
+	end
 end
+

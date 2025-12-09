@@ -15,7 +15,7 @@ function s.initial_effect(c)
 	c:RegisterEffect(e1)
 	--Once per turn: You can target 1 other card in a Pendulum Zone; this card's Pendulum Scale becomes equal to that target's Pendulum Scale, until the end of this turn.
 	local e2=Effect.CreateEffect(c)
-	e2:SetDescription(aux.Stringid(id,1))
+	e2:SetDescription(aux.Stringid(id,2))
 	e2:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e2:SetType(EFFECT_TYPE_IGNITION)
 	e2:SetRange(LOCATION_PZONE)
@@ -38,8 +38,9 @@ function s.initial_effect(c)
 	e4:SetType(EFFECT_TYPE_XMATERIAL+EFFECT_TYPE_IGNITION)
 	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e4:SetRange(LOCATION_MZONE)
-	e4:SetCost(s.atkcos)
-	e4:SetOperation(s.atkop)
+	e4:SetCountLimit(1)
+	e4:SetCondition(s.xyzcon)
+	e4:SetOperation(s.xyzop)
 	c:RegisterEffect(e4)
 end
 --Once per turn, during your Main Phase: You can banish 1 monster from your hand or GY; this turn, "CREATION" Xyz Monsters, or Xyz Monsters with a "CREATION" Monster as material, you control can activate effects without detaching material(s).
@@ -129,6 +130,9 @@ function s.ppop(e,tp,eg,ep,ev,re,r,rp)
 end
 --While this card is attached to a "CREATION" Xyz Monster as material, it gains the following effect:
 --● Once per turn, you can banish 1 card from your hand or GY: Double this cards ATK until the end of the turn.
+function s.xyzcon(e,tp,eg,ep,ev,re,r,rp)
+	return e:GetHandler():IsType(TYPE_XYZ) and Duel.IsExistingMatchingCard(nil,tp,LOCATION_HAND|LOCATION_GRAVE,0,1,e:GetHandler())
+end
 function s.atkcos(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return e:GetHandler():GetAttackAnnouncedCount()==0
 		and Duel.IsExistingMatchingCard(nil,tp,LOCATION_HAND|LOCATION_GRAVE,0,1,e:GetHandler())end
@@ -137,14 +141,21 @@ function s.atkcos(e,tp,eg,ep,ev,re,r,rp,chk)
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
 	Duel.Remove(g,POS_FACEUP,REASON_COST)
 end
-function s.atkop(e,tp,eg,ep,ev,re,r,rp)
+function s.xyzop(e,tp,eg,ep,ev,re,r,rp)
+	if chk==0 then return e:GetHandler():GetAttackAnnouncedCount()==0
+		and Duel.IsExistingMatchingCard(nil,tp,LOCATION_HAND|LOCATION_GRAVE,0,1,e:GetHandler())end
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
+	local g=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_HAND|LOCATION_GRAVE,0,1,1,e:GetHandler())
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
 	--Double its ATK
-	local e1=Effect.CreateEffect(e:GetOwner())
-	e1:SetType(EFFECT_TYPE_SINGLE)
-	e1:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
-	e1:SetCode(EFFECT_SET_ATTACK)
-	e1:SetRange(LOCATION_MZONE)
-	e1:SetValue(e:GetHandler():GetAttack()*2)
-	e1:SetReset(RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END)
-	e:GetHandler():RegisterEffect(e1)
+	if Duel.Remove(g,POS_FACEUP,REASON_COST) then
+		local e1=Effect.CreateEffect(e:GetOwner())
+		e1:SetType(EFFECT_TYPE_SINGLE)
+		e1:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
+		e1:SetCode(EFFECT_SET_ATTACK)
+		e1:SetRange(LOCATION_MZONE)
+		e1:SetValue(e:GetHandler():GetAttack()*2)
+		e1:SetReset(RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END)
+		e:GetHandler():RegisterEffect(e1)
+	end
 end

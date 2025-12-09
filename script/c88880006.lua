@@ -26,6 +26,7 @@ function s.initial_effect(c)
 	c:RegisterEffect(e2)
 	--You can target 1 "CREATION" Pendulum Monster in your Pendulum Zone; add it to your hand, and if you do, you can either place this card in your Pendulum Zone, or, if you control a "CREATION" Xyz Monster, attach this card to 1 "CREATION" Xyz Monster you control as Xyz Material.
 	local e4=Effect.CreateEffect(c)
+	e4:SetDescription(aux.Stringid(id,4))
 	e4:SetType(EFFECT_TYPE_IGNITION)
 	e4:SetRange(LOCATION_MZONE)
 	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
