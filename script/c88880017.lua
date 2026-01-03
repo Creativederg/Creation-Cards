@@ -39,6 +39,7 @@ function s.initial_effect(c)
 	c:RegisterEffect(e3)
 	--(4) Draw
 	local e4=Effect.CreateEffect(c)
+	e4:SetDescription(aux.Stringid(id,4))
 	e4:SetCategory(CATEGORY_DRAW+CATEGORY_HANDES)
 	e4:SetType(EFFECT_TYPE_IGNITION)
 	e4:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
@@ -156,6 +157,9 @@ end
 function s.xyzfilter2(c)
 	return c:IsCode(88880001)
 end
+function s.disfil(c)
+	return c:IsSetCard(0x8df)
+end
 function s.xyzfilter(c)
 	return c:IsType(TYPE_XYZ) and c:IsFaceup() and c:GetOverlayGroup():IsExists(s.xyzfilter2,1,nil) and c:IsSetCard(0x8df)
 end
@@ -183,16 +187,13 @@ function s.drop(e,tp,eg,ep,ev,re,r,rp)
 	if h1>0 then
 		Duel.ShuffleHand(tp)
 		if Duel.DiscardHand(tp,aux.TRUE,2,2,REASON_EFFECT|REASON_DISCARD)>0 then
-			local dc=Duel.GetOperatedGroup():GetFirst()
-			if dc:IsSetCard(0x8df) then sealbool=true end
+			local dc=Duel.GetOperatedGroup()
+			if dc:IsExists(s.disfil,1,nil) then sealbool=true end
 		end
 	end
 	if h2>0 then 
 		Duel.ShuffleHand(1-tp)
-		if Duel.DiscardHand(1-tp,aux.TRUE,2,2,REASON_EFFECT|REASON_DISCARD)>0 then
-			local dc2=Duel.GetOperatedGroup():GetFirst()
-			if dc2:IsSetCard(0x8df) then sealbool=true end
-		end
+		Duel.DiscardHand(1-tp,aux.TRUE,2,2,REASON_EFFECT|REASON_DISCARD)
 	end
 	if sealbool and Duel.SelectYesNo(tp,aux.Stringid(id,2)) then
 		Duel.BreakEffect()

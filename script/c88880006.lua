@@ -79,7 +79,7 @@ function s.bop(e,tp,eg,ep,ev,re,r,rp)
 	if xyz_chk then
 		local sel=Duel.SelectOption(tp,aux.Stringid(id,2),aux.Stringid(id,3))
 		if sel==0 then
-			local g=Duel.SelectMatchingCard(tp,s.bfilter,tp,LOCATION_REMOVED,0,1,1,nil)
+			local g=Duel.SelectMatchingCard(tp,s.bfilter,tp,LOCATION_REMOVED,LOCATION_REMOVED,1,1,nil)
 			local txc=Duel.SelectMatchingCard(tp,s.xcfilter,tp,LOCATION_MZONE,0,1,1,nil):GetFirst()
 			Duel.Overlay(txc,g)
 		else

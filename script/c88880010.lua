@@ -50,10 +50,21 @@ end
 function s.spellfilter(c)
 	return c:IsType(TYPE_SPELL) and c:IsAbleToRemove() and c:IsSetCard(0x8df)
 end
+function s.ovfilter(c)
+	return c:IsType(TYPE_XYZ) and c:GetOverlayGroup():IsExists(s.ovfilter2,1,nil)
+end
+function s.ovfilter2(c)
+	return c:IsSetCard(0x8df)
+end
 function s.copytg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	if chkc then return chkc:IsControler(tp) and chkc:IsLocation(LOCATION_MZONE) and s.xyzfilter(chkc) end
-	if chk==0 then return Duel.IsExistingTarget(s.xyzfilter,tp,LOCATION_MZONE,0,1,nil)
-		and Duel.IsExistingMatchingCard(s.spellfilter,tp,LOCATION_DECK,0,1,nil) end
+	if Duel.IsExistingMatchingCard(s.ovfilter,tp,LOCATION_MZONE,0,1,nil) then
+		if chk==0 then return Duel.IsExistingTarget(s.xyzfilter,tp,LOCATION_MZONE,0,1,nil)
+			and Duel.IsExistingMatchingCard(s.spellfilter,tp,LOCATION_HAND|LOCATION_GRAVE|LOCATION_DECK,0,1,nil) end
+	else
+		if chk==0 then return Duel.IsExistingTarget(s.xyzfilter,tp,LOCATION_MZONE,0,1,nil)
+			and Duel.IsExistingMatchingCard(s.spellfilter,tp,LOCATION_HAND|LOCATION_GRAVE,0,1,nil) end
+	end
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TARGET)
 	Duel.SelectTarget(tp,s.xyzfilter,tp,LOCATION_MZONE,0,1,1,nil)
 end
@@ -62,24 +73,46 @@ function s.copyop(e,tp,eg,ep,ev,re,r,rp)
 	local tc=Duel.GetFirstTarget()
 	if not tc or not tc:IsRelateToEffect(e) or tc:IsFacedown() then return end
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
-	local g=Duel.SelectMatchingCard(tp,s.spellfilter,tp,LOCATION_DECK,0,1,1,nil)
-	local sc=g:GetFirst()
-	if sc and Duel.Remove(sc,POS_FACEUP,REASON_EFFECT)~=0 then
-		local code=sc:GetOriginalCodeRule()
-		--Store the code in a flag effect
-		tc:RegisterFlagEffect(id,RESETS_STANDARD_PHASE_END|RESET_OPPO_TURN,0,1,code)
-		--Give the XYZ monster the ability to activate as the spell
-		local e1=Effect.CreateEffect(e:GetHandler())
-		e1:SetDescription(aux.Stringid(id,1))
-		e1:SetType(EFFECT_TYPE_QUICK_O)
-		e1:SetCode(EVENT_FREE_CHAIN)
-		e1:SetRange(LOCATION_MZONE)
-		e1:SetCountLimit(1)
-		e1:SetCondition(s.spcon)
-		e1:SetTarget(s.sptg)
-		e1:SetOperation(s.spop)
-		e1:SetReset(RESETS_STANDARD_PHASE_END|RESET_OPPO_TURN)
-		tc:RegisterEffect(e1)
+	if Duel.IsExistingMatchingCard(s.ovfilter,tp,LOCATION_MZONE,0,1,nil) then
+		local g=Duel.SelectMatchingCard(tp,s.spellfilter,tp,LOCATION_HAND|LOCATION_GRAVE|LOCATION_DECK,0,1,1,nil)
+		local sc=g:GetFirst()
+		if sc and Duel.Remove(sc,POS_FACEUP,REASON_EFFECT)~=0 then
+			local code=sc:GetOriginalCodeRule()
+			--Store the code in a flag effect
+			tc:RegisterFlagEffect(id,RESETS_STANDARD_PHASE_END|RESET_OPPO_TURN,0,1,code)
+			--Give the XYZ monster the ability to activate as the spell
+			local e1=Effect.CreateEffect(e:GetHandler())
+			e1:SetDescription(aux.Stringid(id,1))
+			e1:SetType(EFFECT_TYPE_QUICK_O)
+			e1:SetCode(EVENT_FREE_CHAIN)
+			e1:SetRange(LOCATION_MZONE)
+			e1:SetCountLimit(1)
+			e1:SetCondition(s.spcon)
+			e1:SetTarget(s.sptg)
+			e1:SetOperation(s.spop)
+			e1:SetReset(RESETS_STANDARD_PHASE_END|RESET_OPPO_TURN)
+			tc:RegisterEffect(e1)
+		end
+	else
+		local g=Duel.SelectMatchingCard(tp,s.spellfilter,tp,LOCATION_HAND|LOCATION_GRAVE,0,1,1,nil)
+		local sc=g:GetFirst()
+		if sc and Duel.Remove(sc,POS_FACEUP,REASON_EFFECT)~=0 then
+			local code=sc:GetOriginalCodeRule()
+			--Store the code in a flag effect
+			tc:RegisterFlagEffect(id,RESETS_STANDARD_PHASE_END|RESET_OPPO_TURN,0,1,code)
+			--Give the XYZ monster the ability to activate as the spell
+			local e1=Effect.CreateEffect(e:GetHandler())
+			e1:SetDescription(aux.Stringid(id,1))
+			e1:SetType(EFFECT_TYPE_QUICK_O)
+			e1:SetCode(EVENT_FREE_CHAIN)
+			e1:SetRange(LOCATION_MZONE)
+			e1:SetCountLimit(1)
+			e1:SetCondition(s.spcon)
+			e1:SetTarget(s.sptg)
+			e1:SetOperation(s.spop)
+			e1:SetReset(RESETS_STANDARD_PHASE_END|RESET_OPPO_TURN)
+			tc:RegisterEffect(e1)
+		end
 	end
 end
 function s.spcon(e,tp,eg,ep,ev,re,r,rp)

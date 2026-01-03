@@ -34,7 +34,7 @@ function s.initial_effect(c)
 	--While this card is attached to a "CREATION" Xyz Monster as material, it gains the following effect:
 	--● Once per turn, you can banish 1 card from your hand or GY: Double this cards ATK until the end of the turn.
 	local e4=Effect.CreateEffect(c)
-	e1:SetDescription(aux.Stringid(id,1))
+	e4:SetDescription(aux.Stringid(id,1))
 	e4:SetType(EFFECT_TYPE_XMATERIAL+EFFECT_TYPE_IGNITION)
 	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e4:SetRange(LOCATION_MZONE)

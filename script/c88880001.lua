@@ -59,10 +59,10 @@ end
 
 --When you Xyz summon a "CREATION" Xyz monster using monsters in your pendulum zone as materials, you can target 1 "CREATION"Xyz monster you control (quick effect): attach this card to the target.
 function s.eqcfilter(c,tp)
-	return  c:IsType(TYPE_XYZ) and c:IsSummonType(SUMMON_TYPE_XYZ) and c:IsSummonPlayer(tp) --and c:IsSetCard(0x8df)
+	return c:IsType(TYPE_XYZ) and c:IsSummonType(SUMMON_TYPE_XYZ) and c:IsSummonPlayer(tp) and c:IsSetCard(0x8df) and c:GetOverlayGroup():GetFirst():IsPreviousLocation(LOCATION_PZONE)
 end
 function s.matfilter(c)
-	return c:IsFaceup()  and c:IsType(TYPE_XYZ) --and c:IsSetCard(0x8df)
+	return c:IsFaceup()  and c:IsType(TYPE_XYZ) and c:IsSetCard(0x8df)
 end
 function s.matcn(e,tp,eg,ep,ev,re,r,rp)
 	return eg:IsExists(s.eqcfilter,1,nil,tp)

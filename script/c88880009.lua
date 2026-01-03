@@ -100,12 +100,13 @@ function s.revop(e,tp,eg,ep,ev,re,r,rp)
 	local ct=0
 	if Duel.CheckLocation(tp,LOCATION_PZONE,0) then ct=ct+1 end
 	if Duel.CheckLocation(tp,LOCATION_PZONE,1) then ct=ct+1 end
-	
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TOFIELD)
-	local g=Duel.SelectMatchingCard(tp,s.pfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE|LOCATION_REMOVED,0,ct,pd,nil)
-	local pc=g:GetFirst()
-	for pc in g:Iter() do
-		Duel.MoveToField(pc,tp,tp,LOCATION_PZONE,POS_FACEUP,true)
+	if Duel.SelectYesNo(tp,aux.Stringid(id,0)) then	
+		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TOFIELD)
+		local g=Duel.SelectMatchingCard(tp,s.pfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE|LOCATION_REMOVED,0,ct,pd,nil)
+		local pc=g:GetFirst()
+		for pc in g:Iter() do
+			Duel.MoveToField(pc,tp,tp,LOCATION_PZONE,POS_FACEUP,true)
+		end
 	end
 end
 --Once per turn: You can target 1 other card in a Pendulum Zone; this card's Pendulum Scale becomes equal to that target's Pendulum Scale, until the end of this turn.
@@ -178,7 +179,7 @@ function s.xyzop(e,tp,eg,ep,ev,re,r,rp,chk)
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
 	local g=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_ONFIELD,LOCATION_ONFIELD,1,1,e:GetHandler())
 	--Can make a second attack
-	if Duel.Remove(g,POS_FACEUP,REASON_COST) then
+	if Duel.Remove(g,POS_FACEUP,REASON_COST)>0 then
 		local e1=Effect.CreateEffect(c)
 		e1:SetDescription(3201)
 		e1:SetType(EFFECT_TYPE_SINGLE)

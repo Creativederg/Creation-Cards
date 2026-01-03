@@ -1,17 +1,17 @@
---CREATION - Celestial Wand
+--CREATION - Atomic Fairy
 local s,id,o=GetID()
 function s.initial_effect(c)
 	Pendulum.AddProcedure(c)
-	--Each time a "CREATION" card(s) is banished: Shuffle 1 banished "CREATION" card into the Deck, then, until the end of this turn, increase or decrease the Scales of all Pendulum Monsters on the field by 1.
+	--Once per turn (Quick Effect): all monsters your opponent controls loose 500 ATK for each "CREATION" card and/or Xyz Monster with a "CREATION" monster as material you control, until the end of the turn.
 	local e1=Effect.CreateEffect(c)
+	e1:SetCategory(CATEGORY_ATKCHANGE)
 	e1:SetDescription(aux.Stringid(id,0))
-	e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
-	e1:SetCode(EVENT_REMOVE)
+	e1:SetType(EFFECT_TYPE_QUICK_O)
+	e1:SetCode(EVENT_FREE_CHAIN)
 	e1:SetRange(LOCATION_PZONE)
-	e1:SetCountLimit(1,id+EFFECT_COUNT_CODE_CHAIN)
-	e1:SetCondition(s.shufcon)
-	e1:SetTarget(s.shuftg)
-	e1:SetOperation(s.shufop)
+	e1:SetCountLimit(1)
+	e1:SetTarget(s.atktg)
+	e1:SetOperation(s.atkop)
 	c:RegisterEffect(e1)
 	--Once per turn: You can target 1 other card in a Pendulum Zone; this card's Pendulum Scale becomes equal to that target's Pendulum Scale, until the end of this turn.
 	local e2=Effect.CreateEffect(c)
@@ -24,63 +24,52 @@ function s.initial_effect(c)
 	e2:SetOperation(s.penop)
 	c:RegisterEffect(e2)
 	--You can target 1 "CREATION" Pendulum Monster in your Pendulum Zone; add it to your hand, and if you do, you can either place this card in your Pendulum Zone, or, if you control a "CREATION" Xyz Monster, attach this card to 1 "CREATION" Xyz Monster you control as Xyz Material. 
-	local e4=Effect.CreateEffect(c)
-	e4:SetType(EFFECT_TYPE_IGNITION)
-	e4:SetDescription(aux.Stringid(id,2))
-	e4:SetRange(LOCATION_MZONE)
-	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
-	e4:SetTarget(s.pptg)
-	e4:SetOperation(s.ppop)
-	c:RegisterEffect(e4)
+	local e3=Effect.CreateEffect(c)
+	e3:SetType(EFFECT_TYPE_IGNITION)
+	e3:SetDescription(aux.Stringid(id,2))
+	e3:SetRange(LOCATION_MZONE)
+	e3:SetProperty(EFFECT_FLAG_CARD_TARGET)
+	e3:SetTarget(s.pptg)
+	e3:SetOperation(s.ppop)
+	c:RegisterEffect(e3)
 	--While this card is attached to an Xyz Monster as material, it gains the following effect:
-	--● This card gains 200 ATK for each card in your banishment.
-	local e5=Effect.CreateEffect(c)
-	e5:SetType(EFFECT_TYPE_XMATERIAL)
-	e5:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
-	e5:SetCode(EFFECT_UPDATE_ATTACK)
-	e5:SetCondition(s.xyzcon)
-	e5:SetRange(LOCATION_MZONE)
-	e5:SetValue(s.value)
-	c:RegisterEffect(e5)
+	--● When this card attacks: your opponents battling monster looses 200 ATK for each material on this card.
+	local e4=Effect.CreateEffect(c)
+	e4:SetDescription(aux.Stringid(id,0))
+	e4:SetCategory(CATEGORY_ATKCHANGE)
+	e4:SetType(EFFECT_TYPE_XMATERIAL+EFFECT_TYPE_TRIGGER_F)
+	e4:SetCode(EVENT_PRE_DAMAGE_CALCULATE)
+	e4:SetCondition(s.xyzcon)
+	e4:SetOperation(s.xyzop)
+	c:RegisterEffect(e4)
 end
---Each time a "CREATION" card(s) is banished: Shuffle 1 banished "CREATION" card into the Deck, then, until the end of this turn, increase or decrease the Scales of all Pendulum Monsters on the field by 1.
-function s.shuffilter(c)
-	return c:IsAbleToDeck() and c:IsFaceup() and c:IsSetCard(0x8df)
+--Once per turn (Quick Effect): all monsters your opponent controls loose 500 ATK for each "CREATION" card and/or Xyz Monster with a "CREATION" monster as material you control, until the end of the turn.
+function s.atkfil(c)
+	return (c:IsType(TYPE_XYZ) and c:GetOverlayGroup():IsExists(s.atkfil2,1,nil)) or c:IsSetCard(0x8df)
 end
-function s.shuffilter(c)
-	return c:IsFaceup() and c:IsFaceup() and bit.band(c:GetOriginalType(),TYPE_PENDULUM)==TYPE_PENDULUM
+function s.atkfil2(c)
+	return c:IsSetCard(0x8df)
 end
-function s.atkfilter(c)
-	return c:IsFaceup() and c:IsSetCard(0x8df)
+function s.atkval(e,c)
+	return Duel.GetMatchingGroupCount(s.atkfil,e:GetOwnerPlayer(),LOCATION_MZONE,0,nil)*-500
 end
-function s.shufcon(e,tp,eg,ep,ev,re,r,rp)
-	return eg:IsExists(s.shuffilter,1,nil)
+function s.atktg(e,tp,eg,ep,ev,re,r,rp,chk)
+	if chk==0 then return Duel.IsExistingMatchingCard(Card.IsFaceup,tp,0,LOCATION_MZONE,1,nil) end
 end
-function s.shuftg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsExistingMatchingCard(s.shuffilter,tp,LOCATION_REMOVED,0,1,nil) end
-	Duel.SetOperationInfo(0,CATEGORY_TODECK,nil,1,0,LOCATION_REMOVED)
-end
-function s.shufop(e,tp,eg,ep,ev,re,r,rp)
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TODECK)
-	local tc=Duel.SelectMatchingCard(tp,s.shuffilter,tp,LOCATION_REMOVED,LOCATION_REMOVED,1,1,nil)--:GetFirst()
-	local g=Duel.GetMatchingGroup(s.atkfilter,tp,LOCATION_MZONE,0,nil)
-	if Duel.SendtoDeck(tc,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 then
-		if #g==0 then return end
-		Duel.BreakEffect()
-		local c=e:GetHandler()
-		for tc in g:Iter() do
-			local e1=Effect.CreateEffect(c)
-			e1:SetType(EFFECT_TYPE_SINGLE)
-			e1:SetCode(EFFECT_UPDATE_ATTACK)
-			e1:SetTarget(s.shufatktg)
-			e1:SetValue(200)
-			e1:SetReset(RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END)
-			tc:RegisterEffect(e1)
-		end
+function s.atkop(e,tp,eg,ep,ev,re,r,rp)
+	local c=e:GetHandler()
+	if not c:IsRelateToEffect(e) then return end
+	local mg=Duel.GetMatchingGroup(Card.IsFaceup,tp,0,LOCATION_MZONE,nil)
+	local tc=mg:GetFirst()
+	while tc do
+		local e1=Effect.CreateEffect(c)
+		e1:SetType(EFFECT_TYPE_SINGLE)
+		e1:SetCode(EFFECT_UPDATE_ATTACK)
+		e1:SetReset(RESET_EVENT|RESETS_STANDARD)
+		e1:SetValue(s.atkval)
+		tc:RegisterEffect(e1)
+		tc=mg:GetNext()
 	end
-end
-function s.shufatktg(e,c)
-	return c:IsSetCard(0x8df) and c:IsType(TYPE_XYZ)
 end
 --Once per turn: You can target 1 other card in a Pendulum Zone; this card's Pendulum Scale becomes equal to that target's Pendulum Scale, until the end of this turn.
 function s.penfilter(c)
@@ -136,11 +125,25 @@ function s.ppop(e,tp,eg,ep,ev,re,r,rp)
 		end
 	end
 end
---While this card is attached to a "CREATION" Xyz Monster as material, it gains the following effect:
---● This card gains 200 ATK for each card in your banishment.
+--When this card attacks: your opponents battling monster looses 200 ATK for each material on this card.
 function s.xyzcon(e,tp,eg,ep,ev,re,r,rp)
-	return e:GetHandler():IsType(TYPE_XYZ)
+	local a=Duel.GetAttacker()
+	local d=Duel.GetAttackTarget()
+	if not (a and d) then return false end
+	if a:IsControler(1-tp) then a,d=d,a end
+	e:SetLabelObject(d)
+	local g=Group.FromCards(a,d)
+	return a and d and a:IsRelateToBattle() and d:IsRelateToBattle() and Duel.GetAttacker()==e:GetHandler()
 end
-function s.value(e,c)
-	return Duel.GetFieldGroupCount(c:GetControler(),LOCATION_REMOVED,LOCATION_REMOVED)*200
+function s.xyzop(e,tp,eg,ep,ev,re,r,rp,chk)
+	local tc=e:GetLabelObject()
+	local c=e:GetHandler()
+	if tc and tc:IsFaceup() and tc:IsRelateToBattle() then
+		local e1=Effect.CreateEffect(c)
+		e1:SetType(EFFECT_TYPE_SINGLE)
+		e1:SetCode(EFFECT_UPDATE_ATTACK)
+		e1:SetValue(c:GetOverlayCount()*-200)
+		e1:SetReset(RESET_EVENT|RESETS_STANDARD)
+		tc:RegisterEffect(e1)
+	end
 end
