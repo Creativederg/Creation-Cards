@@ -44,17 +44,30 @@ end
 function s.lmfilter(c,tp)
 	return c:IsType(TYPE_PENDULUM) and c:IsLocation(LOCATION_PZONE,0) and c:IsSetCard(0x8df)
 end
-function s.linkcon(e)
-	local tp=e:GetHandlerPlayer()
-	local tc1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
-	local tc2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
-	if not (tc1 and tc2 and tc1:IsSetCard(0x8df) and tc2:IsSetCard(0x8df)) then return false end
-	local scl1=tc1:GetScale()
-	local scl2=tc2:GetScale()
-	if tc1:GetScale()+tc2:GetScale()==8 then lm=8 end
-	if scl1>scl2 then scl1,scl2=scl2,scl1 end
-	return (scl1==8 and scl2==8) or lm==8
+function s.scfilter(c)
+	return c:GetScale()==8
 end
+function s.linkcon(e,c)
+	if c==nil then return true end
+	local tp=c:GetControler()
+	local cg=Duel.GetMatchingGroup(s.cfilter,tp,LOCATION_PZONE,0,nil)
+	if cg:GetCount()==2 then
+		for tc in aux.Next(cg) do
+			if tc:GetScale()==0 then
+			return true end
+		end
+		return cg:CheckWithSumEqual(Card.GetScale,8,2,2) or cg:IsExists(s.scfilter,2,nil)
+	end
+end
+--function s.linkcon(e)
+	--local tp=e:GetHandlerPlayer()
+	--local tc1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
+	--local tc2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
+	--if not (tc1 and tc2 and tc1:IsSetCard(0x8df) and tc2:IsSetCard(0x8df)) then return false end
+	--local scl1=tc1:GetScale()
+	--local scl2=tc2:GetScale()
+	--return (scl1+scl2)==8
+--end
 function s.linkop(e,tp,eg,ep,ev,re,r,rp)
 	local tc1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
 	local tc2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)

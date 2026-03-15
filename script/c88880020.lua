@@ -1,7 +1,7 @@
 --Blink that Reveals CREATION
 local s,id,o=GetID()
 function s.initial_effect(c)
-	--Target 1 "CREATION" Xyz monster, (or 1 Xyz monster if you control an Xyz Monster with a "CREATION" Pendulum Monster as material), you control: Attach this card to it as material, also, Special Summon 1 "CREATION" Pendulum Monster from your Face Up Extra Deck or your GY, but shuffle it into the deck at the end of the turn.
+	--If you Control 2 "CREATION" Pendulum monsyers with the same scale in your Pendulum Zone: Target 1 Pendulum Monster you control; Draw cards Equal to half the targeted monsters pendulum scale, then, if you control an Xyz monster with a "CREATION" Pendulum Monster as material, attach the targeted card to 1 of those monsters as an Xyz Material.
 	local e1=Effect.CreateEffect(c)
 	e1:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e1:SetType(EFFECT_TYPE_ACTIVATE)
@@ -10,7 +10,7 @@ function s.initial_effect(c)
 	e1:SetTarget(s.target)
 	e1:SetOperation(s.activate)
 	c:RegisterEffect(e1)
-	--If this card is banished: Shuffle this card into the deck; Draw 1 card. Then, you can Shuffle 1 "CREATION" Pendulum monster from your GY or Face up Extra Deck into the deck: Send 1 card your opponent controls into the GY. Each effect of "Blink that Reveals CREATION" can only be activated once per turn.
+	--If this card is Banished: target 1 Card your opponent controls (if possible); regardless, draw 1 card and shuffle this card into the deck, and if you do, You can send the targeted card to the GY (if any), then, shuffle 1 "CREATION" Pendulum Monster from your GY  or face-up Extra Deck into the deck.
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,3))
 	e2:SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH+CATEGORY_TOGRAVE)
@@ -18,7 +18,7 @@ function s.initial_effect(c)
 	e2:SetProperty(EFFECT_FLAG_DELAY)
 	e2:SetCode(EVENT_REMOVE)
 	e2:SetCountLimit(1,{id,1})
-	e2:SetCost(Cost.SelfToDeck)
+	--e2:SetCost(Cost.SelfToDeck)
 	e2:SetTarget(s.thtg)
 	e2:SetOperation(s.thop)
 	c:RegisterEffect(e2)
@@ -76,21 +76,25 @@ end
 function s.rmop(e,tp,eg,ep,ev,re,r,rp)
 	Duel.SendtoDeck(e:GetHandler(),nil,SEQ_DECKSHUFFLE,REASON_EFFECT)
 end
---If this card is banished: Shuffle this card into the deck; Draw 1 card. Then, you can Shuffle 1 "CREATION" Pendulum monster from your GY or Face up Extra Deck into the deck: Send 1 card your opponent controls into the GY. Each effect of "Blink that Reveals CREATION" can only be activated once per turn.
-function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)
+--If this card is Banished: target 1 Card your opponent controls (if possible); regardless, draw 1 card and shuffle this card into the deck, and if you do, You can send the targeted card to the GY (if any), then, shuffle 1 "CREATION" Pendulum Monster from your GY  or face-up Extra Deck into the deck.
+function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
+	if chkc then return chkc:IsLocation(LOCATION_ONFIELD) and chkc:IsControler(1-tp) and chkc:IsAbleToGrave() end
 	if chk==0 then return Duel.IsPlayerCanDraw(tp,1) end
+	if Duel.IsExistingTarget(Card.IsAbleToGrave,tp,0,LOCATION_ONFIELD,1,nil) then
+		local g=Duel.SelectTarget(tp,Card.IsAbleToGrave,tp,0,LOCATION_ONFIELD,1,1,nil)
+	end
 	Duel.SetTargetPlayer(tp)
 	Duel.SetTargetParam(1)
 	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
 end
 function s.thop(e,tp,eg,ep,ev,re,r,rp)
+	local c=e:GetHandler()
 	Duel.Draw(tp,1,REASON_EFFECT)
-	Duel.BreakEffect()
-	if Duel.IsExistingMatchingCard(s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,nil) and Duel.SelectYesNo(tp,aux.Stringid(id,3)) then
+	local tc=Duel.GetFirstTarget()
+	if Duel.SendtoDeck(c,nil,2,REASON_EFFECT)>0 and Duel.IsExistingMatchingCard(s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,nil) and tc and tc:IsRelateToEffect(e) and Duel.SelectYesNo(tp,aux.Stringid(id,3))then
+		Duel.SendtoGrave(tc,REASON_EFFECT)
+		Duel.BreakEffect()
 		local g=Duel.SelectMatchingCard(tp,s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,1,nil)
-		if Duel.SendtoDeck(g:GetFirst(),nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 and Duel.IsExistingMatchingCard(nil,tp,0,LOCATION_ONFIELD,1,nil) then
-			local tc=Duel.SelectTarget(tp,nil,tp,0,LOCATION_ONFIELD,1,1,nil)
-			Duel.SendtoGrave(tc,REASON_EFFECT)
-		end
+		Duel.SendtoDeck(g:GetFirst(),nil,SEQ_DECKSHUFFLE,REASON_EFFECT)
 	end
 end
