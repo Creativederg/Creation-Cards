@@ -44,27 +44,28 @@ end
 function s.lmfilter(c,tp)
 	return c:IsType(TYPE_PENDULUM) and c:IsLocation(LOCATION_PZONE,0) and c:IsSetCard(0x8df)
 end
-function s.pzfilter(c)
-	return c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM)
-end
-function s.linkcon(e,c)
-	if c==nil then return true end
-	local tp=c:GetControler()
-	local pz1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
-	local pz2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
-	if not (pz1 and pz2) then return false end
-	if not (s.pzfilter(pz1) and s.pzfilter(pz2)) then return false end
-	local s1=pz1:GetScale()
-	local s2=pz2:GetScale()
-	return (s1==8 and s2==8) or (s1+s2==8)
+function s.linkcon(e)
+	local tp=e:GetHandlerPlayer()
+	local tc1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
+	local tc2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
+	if not (tc1 and tc2 and tc1:IsSetCard(0x8df) and tc2:IsSetCard(0x8df)) then return false end
+	local scl1=tc1:GetScale()
+	local scl2=tc2:GetScale()
+	if tc1:GetScale()+tc2:GetScale()==8 then lm=8 end
+	if scl1>scl2 then scl1,scl2=scl2,scl1 end
+	return (scl1==8 and scl2==8) or lm==8
 end
 function s.linkop(e,tp,eg,ep,ev,re,r,rp)
-	local c=e:GetHandler()
-	local pz1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
-	local pz2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
-	local g=Group.FromCards(pz1,pz2)
-	Duel.SendtoGrave(g,REASON_LINK+REASON_MATERIAL)
-	c:SetMaterial(g)
+	local tc1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
+	local tc2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
+	if chk==0 then return Duel.IsExistingMatchingCard(s.lmfilter,tp,LOCATION_PZONE,0,2,nil) 
+		and Duel.IsExistingTarget(s.lmfilter,tp,LOCATION_PZONE,0,1,nil) end
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_LMATERIAL)
+	local sc=Duel.SelectMatchingCard(tp,s.lmfilter,tp,LOCATION_PZONE,0,2,2,nil)
+	if sc then
+		Duel.SendtoGrave(sc,REASON_LINK)
+		Duel.LinkSummon(tp,sc:GetFirst())
+	end
 end
 --During your Main Phase: You can Special Summon 1 face-up "CREATION" Pendulum Monster from your Extra Deck or GY to a zone this card points to.
 function s.filter(c,e,tp,zone)

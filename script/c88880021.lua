@@ -1,8 +1,9 @@
 --Forge that Binds CREATION
-local s,id,o=GetID()
+local s,id=GetID()
 function s.initial_effect(c)
 	--Add 1 "CREATION" Pendulum Monster from your deck to your hand, then, Change the Pendulum Scales of all Pendulum monsters you control to be equal to the added monsters pendulum scale. 
 	local e1=Effect.CreateEffect(c)
+	e1:SetDescription(aux.Stringid(id,0))
 	e1:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e1:SetType(EFFECT_TYPE_ACTIVATE)
 	e1:SetCode(EVENT_FREE_CHAIN)
@@ -10,17 +11,16 @@ function s.initial_effect(c)
 	e1:SetTarget(s.target)
 	e1:SetOperation(s.activate)
 	c:RegisterEffect(e1)
-	--If this card is banished: Shuffle this card into the deck; Draw 1 card. Then, you can Shuffle 1 "CREATION" Pendulum monster from your GY or Face up Extra Deck into the deck: Special Summon, 1 "CREATION" monster from your Face Up Extra Deck or GY. Each effect of "Forge that binds CREATION" can only be activated once per turn.
+	--If this card is banished: target 1 "CREATION" Pendulum Monster from your GY or Face-Up Extra Deck (if possible); reguardless, draw 1 card and shuffle this card into the deck, and if you do, you can Special Summon that target (if any), then, Shuffle 1 "CREATION" Pendulum Monster from your GY or Face-Up Extra Deck into the deck.
 	local e2=Effect.CreateEffect(c)
-	e2:SetDescription(aux.Stringid(id,3))
+	e2:SetDescription(aux.Stringid(id,1))
 	e2:SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH+CATEGORY_TOGRAVE)
 	e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
 	e2:SetProperty(EFFECT_FLAG_DELAY)
 	e2:SetCode(EVENT_REMOVE)
 	e2:SetCountLimit(1,{id,1})
-	e2:SetCost(Cost.SelfToDeck)
-	e2:SetTarget(s.thtg)
-	e2:SetOperation(s.thop)
+	e2:SetTarget(s.sptg)
+	e2:SetOperation(s.spop)
 	c:RegisterEffect(e2)
 end
 --Add 1 "CREATION" Pendulum Monster from your deck to your hand, then, Change the Pendulum Scales of all Pendulum monsters you control to be equal to the added monsters pendulum scale. 
@@ -51,24 +51,40 @@ function s.activate(e,tp,eg,ep,ev,re,r,rp)
 		Duel.RegisterEffect(e2,tp)
 	end
 end
---If this card is banished: Shuffle this card into the deck; Draw 1 card. Then, you can Shuffle 1 "CREATION" Pendulum monster from your GY or Face up Extra Deck into the deck: Special Summon, 1 "CREATION" monster from your Face Up Extra Deck or GY. Each effect of "Forge that binds CREATION" can only be activated once per turn.
-function s.monfilter(c)
-	return c:IsFaceup() and c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM)
+--If this card is banished: target 1 "CREATION" Pendulum Monster from your GY or Face-Up Extra Deck (if possible); reguardless, draw 1 card and shuffle this card into the deck, and if you do, you can Special Summon that target (if any), then, Shuffle 1 "CREATION" Pendulum Monster from your GY or Face-Up Extra Deck into the deck.
+function s.spfilter(c,e,tp)
+	return c:IsType(TYPE_PENDULUM) and c:IsCanBeSpecialSummoned(e,0,tp,false,false)
+		and (c:IsLocation(LOCATION_GRAVE) or c:IsLocation(LOCATION_EXTRA) and Duel.GetLocationCountFromEx(tp,tp,nil,c)>0 and c:IsFaceup())
 end
-function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsPlayerCanDraw(tp,1) end
-	Duel.SetTargetPlayer(tp)
-	Duel.SetTargetParam(1)
+function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
+	if chkc then return chkc:IsLocation(LOCATION_GRAVE+LOCATION_EXTRA) and s.spfilter(chkc,e,tp) end
+	if chk==0 then return true end
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
+	local g=Duel.GetMatchingGroup(s.spfilter,tp,LOCATION_GRAVE+LOCATION_EXTRA,0,nil,e,tp)
+	if #g>0 then
+		local tg=g:Select(tp,1,1,nil)
+		Duel.SetTargetCard(tg)
+	end
 	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
 end
-function s.thop(e,tp,eg,ep,ev,re,r,rp)
+function s.tdfilter(c)
+	return c:IsType(TYPE_PENDULUM) and (c:IsLocation(LOCATION_GRAVE) or c:IsFaceup() and c:IsLocation(LOCATION_EXTRA))
+		and c:IsAbleToDeck()
+end
+function s.spop(e,tp,eg,ep,ev,re,r,rp)
+	local c=e:GetHandler()
+	local g=Duel.GetTargetCards(e)
+	local tc=g:GetFirst()
 	Duel.Draw(tp,1,REASON_EFFECT)
-	Duel.BreakEffect()
-	if Duel.IsExistingMatchingCard(s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,2,nil) and Duel.SelectYesNo(tp,aux.Stringid(id,3)) then
-		local g=Duel.SelectMatchingCard(tp,s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,1,nil)
-		if Duel.SendtoDeck(g:GetFirst(),nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 and Duel.IsExistingMatchingCard(s.monfilter,tp,0,LOCATION_EXTRA|LOCATION_GY,1,nil) then
-			local tc=Duel.SelectMatchingCard(tp,s.monfilter,tp,LOCATION_EXTRA|LOCATION_GY,0,1,1,nil)
+	if Duel.SendtoDeck(c,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 then
+		if tc and Duel.GetLocationCount(tp,LOCATION_MZONE)>0 and Duel.SelectYesNo(tp,aux.Stringid(id,2))then
 			Duel.SpecialSummon(tc,0,tp,tp,false,false,POS_FACEUP)
 		end
+	end
+	local dg=Duel.GetMatchingGroup(s.tdfilter,tp,LOCATION_GRAVE+LOCATION_EXTRA,0,nil)
+	if #dg>0 then
+		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TODECK)
+		local sg=dg:Select(tp,1,1,nil)
+		Duel.SendtoDeck(sg,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)
 	end
 end
