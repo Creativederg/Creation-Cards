@@ -45,26 +45,34 @@ function s.lmfilter(c,tp)
 	return c:IsType(TYPE_PENDULUM) and c:IsLocation(LOCATION_PZONE,0) and c:IsSetCard(0x8df)
 end
 function s.pzfilter(c)
-	return c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM)
+	return c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM) and c:IsFaceup()
 end
 function s.linkcon(e,c)
 	if c==nil then return true end
 	local tp=c:GetControler()
-	local pz1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
-	local pz2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
-	if not (pz1 and pz2) then return false end
-	if not (s.pzfilter(pz1) and s.pzfilter(pz2)) then return false end
-	local s1=pz1:GetScale()
-	local s2=pz2:GetScale()
-	return (s1==8 and s2==8) or (s1+s2==8)
+	local g=Duel.GetMatchingGroup(s.pzfilter,tp,LOCATION_PZONE,0,nil)
+	if #g<2 then return false end
+	-- Check if there is at least one valid pair
+	return g:IsExists(function(c1)
+		return g:IsExists(function(c2)
+			if c1==c2 then return false end
+			local s1,s2=c1:GetScale(),c2:GetScale()
+			return (s1==8 and s2==8) or (s1+s2==8)
+		end,1,nil)
+	end,1,nil)
 end
 function s.linkop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
-	local pz1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
-	local pz2=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
-	local g=Group.FromCards(pz1,pz2)
-	Duel.SendtoGrave(g,REASON_LINK+REASON_MATERIAL)
-	c:SetMaterial(g)
+	local g=Duel.GetMatchingGroup(s.pzfilter,tp,LOCATION_PZONE,0,nil)
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_LMATERIAL)
+	local sg=g:Select(tp,2,2,nil)
+	-- Optional: re-check the selected pair is valid
+	local c1,c2=sg:GetFirst(),sg:GetNext()
+	local s1,s2=c1:GetScale(),c2:GetScale()
+	if not ((s1==8 and s2==8) or (s1+s2==8)) then return end
+
+	Duel.SendtoGrave(sg,REASON_LINK+REASON_MATERIAL)
+	c:SetMaterial(sg)
 end
 --During your Main Phase: You can Special Summon 1 face-up "CREATION" Pendulum Monster from your Extra Deck or GY to a zone this card points to.
 function s.filter(c,e,tp,zone)
@@ -102,11 +110,16 @@ function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	Duel.SetOperationInfo(0,CATEGORY_TODECK,g,1,tp,LOCATION_EXTRA|LOCATION_GRAVE)
 end
 function s.thop(e,tp,eg,ep,ev,re,r,rp)
-	local c=e:GetHandler()
 	if not e:GetHandler():IsRelateToEffect(e) then return end
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TODECK)
 	local g=Duel.SelectMatchingCard(tp,s.sumfil2,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,1,nil)
+	if #g==0 then return end
+
+	-- Shuffle the selected card into the Deck
 	if Duel.SendtoDeck(g,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 then
+		-- Force a full deck shuffle so the card is properly randomized
+		Duel.ShuffleDeck(tp)
+		-- Now draw
 		Duel.Draw(tp,1,REASON_EFFECT)
 	end
 end

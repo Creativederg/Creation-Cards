@@ -31,9 +31,6 @@ end
 function s.ovfilter2(c)
 	return c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM)
 end
-function s.scfilter(c)
-	return c:IsType(TYPE_XYZ)
-end
 function s.condition(e,c,og)
 	local tp=e:GetHandlerPlayer()
 	local tc1=Duel.GetFieldCard(tp,LOCATION_PZONE,0)
@@ -60,7 +57,7 @@ function s.activate(e,tp,eg,ep,ev,re,r,rp)
 	Duel.BreakEffect()
 	if Duel.IsExistingMatchingCard(s.ovfilter,tp,LOCATION_MZONE,0,1,nil) then
 		local tc=Duel.GetFirstTarget()
-		local sc=Duel.SelectMatchingCard(tp,s.spcfilter,tp,LOCATION_MZONE,0,1,1,nil,e,tp,c):GetFirst()
+		local sc=Duel.SelectMatchingCard(tp,s.ovfilter,tp,LOCATION_MZONE,0,1,1,nil,e,tp,c):GetFirst()
 		Duel.Overlay(sc,tc)
 	end
 end
@@ -72,20 +69,32 @@ function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	if chkc then return chkc:IsLocation(LOCATION_ONFIELD) and chkc:IsControler(1-tp) and chkc:IsAbleToGrave() end
 	if chk==0 then return Duel.IsPlayerCanDraw(tp,1) end
 	if Duel.IsExistingTarget(Card.IsAbleToGrave,tp,0,LOCATION_ONFIELD,1,nil) then
-		local g=Duel.SelectTarget(tp,Card.IsAbleToGrave,tp,0,LOCATION_ONFIELD,1,1,nil)
+		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TOGRAVE)
+		Duel.SelectTarget(tp,Card.IsAbleToGrave,tp,0,LOCATION_ONFIELD,1,1,nil)
 	end
 	Duel.SetTargetPlayer(tp)
 	Duel.SetTargetParam(1)
-	Duel.SetOperationInfo(0,CATEGORY_DRAW+CATEGORY_TOGRAVE,g,0,tp,1)
+	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
 end
 function s.thop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
-	Duel.Draw(tp,1,REASON_EFFECT)
+	local p,d=Duel.GetChainInfo(0,CHAININFO_TARGET_PLAYER,CHAININFO_TARGET_PARAM)
+	Duel.Draw(p,d,REASON_EFFECT)
+
 	local tc=Duel.GetFirstTarget()
-	if Duel.SendtoDeck(c,nil,2,REASON_EFFECT)>0 and Duel.IsExistingMatchingCard(s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,nil) and tc and tc:IsRelateToEffect(e) then
-		Duel.SendtoGrave(tc,REASON_EFFECT)
-		Duel.BreakEffect()
-		local g=Duel.SelectMatchingCard(tp,s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,1,nil)
-		Duel.SendtoDeck(g:GetFirst(),nil,SEQ_DECKSHUFFLE,REASON_EFFECT)
+	-- Shuffle this card into the Deck
+	if Duel.SendtoDeck(c,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 then
+		-- Send the targeted card to the GY (if it still exists and is related)
+		if tc and tc:IsRelateToEffect(e) and tc:IsAbleToGrave() then
+			Duel.SendtoGrave(tc,REASON_EFFECT)
+		end
+		-- Then shuffle 1 "CREATION" Pendulum Monster
+		if Duel.IsExistingMatchingCard(s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,nil) then
+			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TODECK)
+			local g=Duel.SelectMatchingCard(tp,s.monfilter,tp,LOCATION_EXTRA|LOCATION_GRAVE,0,1,1,nil)
+			if #g>0 then
+				Duel.SendtoDeck(g,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)
+			end
+		end
 	end
 end

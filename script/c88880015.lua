@@ -122,44 +122,59 @@ function s.xyzfilter(c)
 	return c:IsType(TYPE_XYZ) and c:IsSetCard(0x8df)
 end
 function s.spetg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsExistingMatchingCard(aux.TRUE,tp,LOCATION_PZONE,0,1,nil) and (Duel.IsExistingMatchingCard(s.spefil,tp,LOCATION_DECK,0,2,nil) or Duel.IsExistingMatchingCard(s.spefil2,tp,LOCATION_DECK|LOCATION_GRAVE,0,2,nil))end
-	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK+LOCATION_GRAVE)
+	if chk==0 then
+		local c=e:GetHandler()
+		local has_other_xyz=Duel.IsExistingMatchingCard(s.xyzfilter,tp,LOCATION_MZONE,0,1,c)
+		if has_other_xyz then
+			-- At least 1 monster in Deck or GY
+			return Duel.IsExistingMatchingCard(s.spefil2,tp,LOCATION_DECK|LOCATION_GRAVE,0,1,nil)
+		else
+			-- Exactly 2 "CREATION" monsters in Deck
+			return Duel.IsExistingMatchingCard(s.spefil,tp,LOCATION_DECK,0,2,nil)
+		end
+	end
+	Duel.SetOperationInfo(0,CATEGORY_SPECIAL_SUMMON,nil,1,tp,LOCATION_DECK|LOCATION_GRAVE)
 end
 function s.speop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
+	local has_other_xyz=Duel.IsExistingMatchingCard(s.xyzfilter,tp,LOCATION_MZONE,0,1,c)
+
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
-	if Duel.IsExistingMatchingCard(s.xyzfilter,tp,LOCATION_ONFIELD,0,1,e:GetHandler()) then
-		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SELECT)
-		local g=Duel.SelectMatchingCard(tp,s.spefil2,tp,LOCATION_DECK|LOCATION_GRAVE,0,2,2,nil)
-		if Duel.SpecialSummon(g,0,tp,tp,false,false,POS_FACEUP) then
-			Duel.BreakEffect()
-			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SELECT)
-			local g=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_EXTRA,0,1,1,nil)
-			Duel.Destroy(g,REASON_EFFECT)
-			local e1=Effect.CreateEffect(c)
-			e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
-			e1:SetCode(EVENT_PHASE+PHASE_END)
-			e1:SetCountLimit(1)
-			e1:SetOperation(s.pendop)
-			e1:SetReset(RESET_PHASE|PHASE_END)
-			Duel.RegisterEffect(e1,tp)
-		end
+	local g
+	if has_other_xyz then
+		-- Up to 2 monsters of any type from Deck and/or GY
+		g=Duel.SelectMatchingCard(tp,s.spefil2,tp,LOCATION_DECK|LOCATION_GRAVE,0,1,2,nil)
 	else
-		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SELECT)
-		local g=Duel.SelectMatchingCard(tp,s.spefil,tp,LOCATION_DECK,0,2,2,nil)
-		if Duel.SpecialSummon(g,0,tp,tp,false,false,POS_FACEUP) then
-			Duel.BreakEffect()
-			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SELECT)
-			local g=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_PZONE,0,1,1,nil)
-			Duel.Destroy(g,REASON_EFFECT)
-			local e1=Effect.CreateEffect(c)
-			e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
-			e1:SetCode(EVENT_PHASE+PHASE_END)
-			e1:SetCountLimit(1)
-			e1:SetOperation(s.pendop)
-			e1:SetReset(RESET_PHASE|PHASE_END)
-			Duel.RegisterEffect(e1,tp)
+		-- Exactly 2 "CREATION" monsters from Deck
+		g=Duel.SelectMatchingCard(tp,s.spefil,tp,LOCATION_DECK,0,2,2,nil)
+	end
+	if #g==0 then return end
+
+	local ct=Duel.SpecialSummon(g,0,tp,tp,false,false,POS_FACEUP)
+	if ct>0 then
+		-- Destroy 1 card in your Pendulum Zone
+		if Duel.IsExistingMatchingCard(aux.TRUE,tp,LOCATION_PZONE,0,1,nil) then
+			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_DESTROY)
+			local dg=Duel.SelectMatchingCard(tp,aux.TRUE,tp,LOCATION_PZONE,0,1,1,nil)
+			if #dg>0 then
+				Duel.Destroy(dg,REASON_EFFECT)
+			end
 		end
+
+		-- Place this card in the Pendulum Zone during the End Phase
+		local e1=Effect.CreateEffect(c)
+		e1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
+		e1:SetCode(EVENT_PHASE+PHASE_END)
+		e1:SetCountLimit(1)
+		e1:SetOperation(function(e2,tp2)
+			local tc=e2:GetLabelObject()
+			if tc and tc:IsLocation(LOCATION_MZONE) then
+				Duel.MoveToField(tc,tp2,tp2,LOCATION_PZONE,POS_FACEUP,true)
+			end
+		end)
+		e1:SetLabelObject(c)
+		e1:SetReset(RESET_PHASE|PHASE_END)
+		Duel.RegisterEffect(e1,tp)
 	end
 end
 function s.pendop(e,tp,eg,ep,ev,re,r,rp)
@@ -184,12 +199,16 @@ end
 function s.operation(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
 	local g=Duel.GetTargetCards(e)
-	if #g>0 and Duel.Destroy(g,REASON_EFFECT)~=0 then
-		local sg=g:GetFirst()
-		if c:IsRelateToEffect(e) and sg:IsSetCard(0x8df) and sg:IsType(TYPE_PENDULUM) and Duel.SelectYesNo(tp,aux.Stringid(id,2)) then
-			Duel.BreakEffect()
+	if #g==0 then return end
+	if Duel.Destroy(g,REASON_EFFECT)~=0 then
+		local dg=Duel.GetOperatedGroup()
+		if c:IsRelateToEffect(e) and dg:IsExists(function(tc) return tc:IsSetCard(0x8df) and tc:IsType(TYPE_PENDULUM) end,1,nil)
+			and Duel.SelectYesNo(tp,aux.Stringid(id,2)) then
+			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
 			local tc=Duel.SelectMatchingCard(tp,s.monfilter,tp,LOCATION_DECK,0,1,1,nil)
-			Duel.SpecialSummon(tc,0,tp,tp,false,false,POS_FACEUP)
+			if #tc>0 then
+				Duel.SpecialSummon(tc,0,tp,tp,false,false,POS_FACEUP)
+			end
 		end
 	end
 end

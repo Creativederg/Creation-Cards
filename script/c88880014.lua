@@ -69,24 +69,28 @@ function s.mttg(e,tp,eg,ep,ev,re,r,rp,chk)
 	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,0,LOCATION_DECK)
 end
 function s.mtop(e,tp,eg,ep,ev,re,r,rp)
-	local c=e:GetHandler()
 	Duel.ConfirmDecktop(tp,5)
 	local g=Duel.GetDecktopGroup(tp,5)
-	if #g<1 then return end
+	if #g<5 then return end
+
+	local sg=Group.CreateGroup()
 	if g:IsExists(s.selfil,1,nil) then
 		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
-		local sg=g:Select(tp,1,2,nil)
-		if sg:GetFirst():IsAbleToHand() then
+		sg=g:Select(tp,1,2,nil)
+		if #sg>0 then
 			Duel.SendtoHand(sg,nil,REASON_EFFECT)
 			Duel.ConfirmCards(1-tp,sg)
 			Duel.ShuffleHand(tp)
-			Duel.BreakEffect()
-			Duel.SortDecktop(tp,tp,(5-sg:GetCount()))
-		else
-			Duel.SendtoGrave(sg,REASON_RULE)
+			g:Sub(sg)   -- remove the cards that went to hand
 		end
 	else
 		Duel.SendtoGrave(g,REASON_EFFECT)
+		return
+	end
+
+	-- Return the remaining cards to the top in the order the player chooses
+	if #g>0 then
+		Duel.SortDecktop(tp,tp,#g)
 	end
 end
 --If this card is involved in battle, you can use 1 material: destroy all cards in the pendulum zones and if you do this card gains 300 ATK/DEF for the combined scale of all destroyed monsters, then, all monsters you control gain 100 ATK/DEF for the combined scale of all destroyed monsters, until the end of the turn.

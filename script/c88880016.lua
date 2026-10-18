@@ -3,7 +3,7 @@ local s,id,o=GetID()
 function s.initial_effect(c)
 	Xyz.AddProcedure(c,nil,8,2)--,s.ovfilter,aux.Stringid(s,0),2,s.xyzop)
 	c:EnableReviveLimit()
-	--You can also Xyz Summon this card by using 2 scale 4 monsters from your pendulum zone as material. 
+	--You can also Xyz Summon this card by using 2 scale 8 monsters from your pendulum zone as material. 
 	local e0=Effect.CreateEffect(c)
 	e0:SetDescription(aux.Stringid(id,0))
 	e0:SetProperty(EFFECT_FLAG_UNCOPYABLE)
@@ -26,25 +26,29 @@ function s.initial_effect(c)
 	e1:SetOperation(s.spop)
 	c:RegisterEffect(e1)
 	--Each time a Pendulum monster is destroyed by a "CREATION" Xyz Monsters effect: You can target 1 card your opponent controls; destroy it.
-	local e1=Effect.CreateEffect(c)
-	e1:SetType(EFFECT_TYPE_CONTINUOUS+EFFECT_TYPE_FIELD)
-	e1:SetRange(LOCATION_MZONE)
-	e1:SetCode(EVENT_DESTROYED)
-	e1:SetCondition(s.revcon)
-	e1:SetTarget(s.revtg)
-	e1:SetOperation(s.revop)
-	c:RegisterEffect(e1)
-	--Twice per turn (Quick Effect): you can use 1 material: Draw 1 card and reveal it. If you revealed a "CREATION" Pendulum monster: You can Special Summon it, then, all monsters your opponent controls lose 300 ATK for its scale.
 	local e2=Effect.CreateEffect(c)
-	e2:SetCategory(CATEGORY_DRAW+CATEGORY_SPECIAL_SUMMON+CATEGORY_ATKCHANGE)
-	e2:SetDescription(aux.Stringid(id,2))
-	e2:SetType(EFFECT_TYPE_IGNITION)
+	e2:SetDescription(aux.Stringid(id,1))
+	e2:SetCategory(CATEGORY_DESTROY)
+	e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O)
+	e2:SetCode(EVENT_DESTROYED)
+	e2:SetProperty(EFFECT_FLAG_DELAY+EFFECT_FLAG_CARD_TARGET)
 	e2:SetRange(LOCATION_MZONE)
-	e2:SetCountLimit(2)
-	e2:SetCost(s.draco)
-	e2:SetTarget(s.dratg)
-	e2:SetOperation(s.draop)
+	e2:SetCondition(s.revcon)
+	e2:SetTarget(s.revtg)
+	e2:SetOperation(s.revop)
 	c:RegisterEffect(e2)
+	--Twice per turn (Quick Effect): you can use 1 material: Draw 1 card and reveal it. If you revealed a "CREATION" Pendulum monster: You can Special Summon it, then, all monsters your opponent controls lose 300 ATK for its scale.
+	local e3=Effect.CreateEffect(c)
+	e3:SetCategory(CATEGORY_DRAW+CATEGORY_SPECIAL_SUMMON+CATEGORY_ATKCHANGE)
+	e3:SetDescription(aux.Stringid(id,2))
+	e3:SetType(EFFECT_TYPE_QUICK_O)
+	e3:SetCode(EVENT_FREE_CHAIN)
+	e3:SetRange(LOCATION_MZONE)
+	e3:SetCountLimit(2)
+	e3:SetCost(s.draco)
+	e3:SetTarget(s.dratg)
+	e3:SetOperation(s.draop)
+	c:RegisterEffect(e3)
 end
 function s.ovfilter(c,tp)
 	return c:IsType(TYPE_PENDULUM) and c:IsLocation(LOCATION_PZONE,0) and c:IsSetCard(0x8df) and (c:GetLeftScale()==8 or c:GetRightScale()==8)
@@ -108,25 +112,24 @@ function s.spop(e,tp,eg,ep,ev,re,r,rp)
 end
 --Each time a Pendulum monster is destroyed by a "CREATION" Xyz Monsters effect: You can target 1 card your opponent controls; destroy it.
 function s.revfilter(c,tp)
-	return  c:IsPreviousLocation(LOCATION_ONFIELD)
-		and c:IsReason(REASON_DESTROY)
+	return c:IsPreviousLocation(LOCATION_ONFIELD) and c:IsReason(REASON_EFFECT)
+		and c:IsType(TYPE_PENDULUM)
 end
 function s.revcon(e,tp,eg,ep,ev,re,r,rp)
-	local c=e:GetHandler()
-	return eg:IsExists(s.revfilter,1,nil,tp) and re and re:GetHandler():IsSetCard(0x8df)
+	return eg:IsExists(s.revfilter,1,nil) and re and re:GetHandler():IsSetCard(0x8df) and re:GetHandler():IsType(TYPE_XYZ)
 end
 function s.revtg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
-	if chkc then return chkc:IsControler(tp) and chkc:IsOnField() end
-	if chk==0 then return Duel.IsExistingTarget(nil,tp,0,LOCATION_ONFIELD,1,nil,tp) end
+	if chkc then return chkc:IsOnField() and chkc:IsControler(1-tp) end
+	if chk==0 then return Duel.IsExistingTarget(aux.TRUE,tp,0,LOCATION_ONFIELD,1,nil) end
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_DESTROY)
-	local g=Duel.SelectTarget(tp,nil,tp,0,LOCATION_ONFIELD,1,1,nil,tp)
+	local g=Duel.SelectTarget(tp,aux.TRUE,tp,0,LOCATION_ONFIELD,1,1,nil)
 	Duel.SetOperationInfo(0,CATEGORY_DESTROY,g,1,0,0)
 end
 function s.revop(e,tp,eg,ep,ev,re,r,rp)
-	local pd=eg:FilterCount(s.revfilter,nil,tp)
-	local ct=0
 	local tc=Duel.GetFirstTarget()
+	if tc and tc:IsRelateToEffect(e) then
 		Duel.Destroy(tc,REASON_EFFECT)
+	end
 end
 --Twice per turn (Quick Effect): you can use 1 material: Draw 1 card and reveal it. If you revealed a "CREATION" Pendulum monster: You can Special Summon it, then, all monsters your opponent controls lose 300 ATK for its scale.
 function s.draco(e,tp,eg,ep,ev,re,r,rp,chk)

@@ -53,8 +53,9 @@ function s.activate(e,tp,eg,ep,ev,re,r,rp)
 end
 --If this card is banished: target 1 "CREATION" Pendulum Monster from your GY or Face-Up Extra Deck (if possible); reguardless, draw 1 card and shuffle this card into the deck, and if you do, you can Special Summon that target (if any), then, Shuffle 1 "CREATION" Pendulum Monster from your GY or Face-Up Extra Deck into the deck.
 function s.spfilter(c,e,tp)
-	return c:IsType(TYPE_PENDULUM) and c:IsCanBeSpecialSummoned(e,0,tp,false,false)
-		and (c:IsLocation(LOCATION_GRAVE) or c:IsLocation(LOCATION_EXTRA) and Duel.GetLocationCountFromEx(tp,tp,nil,c)>0 and c:IsFaceup())
+	return c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM)
+		and c:IsCanBeSpecialSummoned(e,0,tp,false,false)
+		and (c:IsLocation(LOCATION_GRAVE) or (c:IsLocation(LOCATION_EXTRA) and c:IsFaceup() and Duel.GetLocationCountFromEx(tp,tp,nil,c)>0))
 end
 function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	if chkc then return chkc:IsLocation(LOCATION_GRAVE+LOCATION_EXTRA) and s.spfilter(chkc,e,tp) end
@@ -68,16 +69,18 @@ function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
 end
 function s.tdfilter(c)
-	return c:IsType(TYPE_PENDULUM) and (c:IsLocation(LOCATION_GRAVE) or c:IsFaceup() and c:IsLocation(LOCATION_EXTRA))
+	return c:IsSetCard(0x8df) and c:IsType(TYPE_PENDULUM)
+		and (c:IsLocation(LOCATION_GRAVE) or (c:IsFaceup() and c:IsLocation(LOCATION_EXTRA)))
 		and c:IsAbleToDeck()
 end
 function s.spop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
 	local g=Duel.GetTargetCards(e)
-	local tc=g:GetFirst()
+	local tc=g and g:GetFirst() or nil   -- safe if g is nil
 	Duel.Draw(tp,1,REASON_EFFECT)
 	if Duel.SendtoDeck(c,nil,SEQ_DECKSHUFFLE,REASON_EFFECT)>0 then
-		if tc and Duel.GetLocationCount(tp,LOCATION_MZONE)>0 and Duel.SelectYesNo(tp,aux.Stringid(id,2))then
+		if tc and tc:IsRelateToEffect(e) and Duel.GetLocationCount(tp,LOCATION_MZONE)>0
+			and Duel.SelectYesNo(tp,aux.Stringid(id,2)) then
 			Duel.SpecialSummon(tc,0,tp,tp,false,false,POS_FACEUP)
 		end
 	end

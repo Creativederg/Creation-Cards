@@ -38,7 +38,7 @@ function s.initial_effect(c)
 	local e4=Effect.CreateEffect(c)
 	e4:SetDescription(aux.Stringid(id,3))
 	e4:SetType(EFFECT_TYPE_XMATERIAL+EFFECT_TYPE_TRIGGER_O)
-	e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
+	--e4:SetProperty(EFFECT_FLAG_CARD_TARGET)
 	e4:SetCode(EVENT_BATTLE_DESTROYING)
 	e4:SetRange(LOCATION_MZONE)
 	e4:SetTarget(s.xyztg)
@@ -142,11 +142,13 @@ function s.xyzop(e,tp,eg,ep,ev,re,r,rp)
 	local g=Duel.SelectMatchingCard(tp,aux.NecroValleyFilter(s.thfilter),tp,LOCATION_GRAVE,0,1,1,nil)
 	if g:GetCount()>0 and Duel.SendtoHand(g,nil,REASON_EFFECT)~=0 and g:GetFirst():IsLocation(LOCATION_HAND) then
 		Duel.ConfirmCards(1-tp,g)
-		if g:GetCount()>0 and Duel.SelectYesNo(tp,aux.Stringid(id,2)) then
+		if g:GetCount()>0 and Duel.SelectYesNo(tp,aux.Stringid(id,3)) then
 			Duel.BreakEffect()
-			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
-			local gb=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_HAND,0,1,1,nil)
-			Duel.Remove(gb,POS_FACEUP,REASON_EFECT)
+			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
+			local gb=Duel.SelectMatchingCard(tp,nil,tp,LOCATION_HAND+LOCATION_ONFIELD,0,1,1,nil)
+			if #gb>0 then
+				Duel.Remove(gb,POS_FACEUP,REASON_EFFECT)
+			end
 		end
 	end
 end
